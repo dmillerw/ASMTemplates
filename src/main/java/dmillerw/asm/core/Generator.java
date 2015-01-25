@@ -243,6 +243,7 @@ public class Generator {
                     // to the generated default method
                     if (overrideMethods.contains(oldMapping)) {
                         debug("Found super call to overridden method!");
+                        // Fun fact. This somehow handles super super super methods and I don't even know how
                         insnList.add(new MethodInsnNode(INVOKESPECIAL, clazzDesc, "default_" + oldNode.name, oldNode.desc, false));
                     } else {
                         insnList.add(new MethodInsnNode(INVOKESPECIAL, superType, oldNode.name, oldNode.desc, false));
