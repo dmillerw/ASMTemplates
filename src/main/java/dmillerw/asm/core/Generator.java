@@ -5,7 +5,6 @@ import com.google.common.collect.Maps;
 import dmillerw.asm.annotation.MConstructor;
 import dmillerw.asm.annotation.MOverride;
 import dmillerw.asm.template.Template;
-import net.minecraft.launchwrapper.Launch;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
@@ -27,56 +26,10 @@ public class Generator {
 
     private static final ASMClassLoader LOADER = new ASMClassLoader();
 
-    public static class Mapping {
-
-        public Class<?>[] params;
-        public Class<?> returnType;
-        public String signature;
-
-        public Mapping(Constructor constructor) {
-            this.params = constructor.getParameterTypes();
-            this.returnType = null;
-
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append("(");
-            for (Class<?> clazz : params) {
-                stringBuilder.append(ASMUtils.getSignature(clazz));
-            }
-            stringBuilder.append(")");
-
-            this.signature = stringBuilder.toString();
-        }
-
-        public Mapping(Method method) {
-            this.params = method.getParameterTypes();
-            this.returnType = method.getReturnType();
-
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append("(");
-            for (Class<?> clazz : params) {
-                stringBuilder.append(ASMUtils.getSignature(clazz));
-            }
-            stringBuilder.append(")");
-            if (returnType != null) {
-                stringBuilder.append(ASMUtils.getSignature(returnType));
-            } else {
-                stringBuilder.append("V");
-            }
-
-            this.signature = stringBuilder.toString();
-        }
-    }
-
     public static <T> Class<T> generateSubclass(Class<T> superclazz, Template<?> template) throws IOException {
         int id = Template.addTemplate(template);
 
-        ClassNode templateNode = null;
-        if (Launch.classLoader == null) {
-            System.out.println("NO MINECRAFT CLASSLOADER FOUND. DISABLING BYTE RETRIEVAL!");
-        } else {
-            templateNode = ASMUtils.getClassNode(template.getClass());
-        }
-
+        ClassNode templateNode = ASMUtils.getClassNode(template.getClass());
 
         final String superType = Type.getInternalName(superclazz);
         final String clazzName = superclazz.getName() + "$GENERATED_" + template.hashCode();
@@ -143,11 +96,11 @@ public class Generator {
             for (int i=0; i<mapping.params.length; i++) {
                 visitor.visitVarInsn(ASMUtils.getLoadCode(mapping.params[i]), i + 1);
             }
-            visitor.visitMethodInsn(INVOKESPECIAL, superType, "<init>", mapping.signature + "V");
+            visitor.visitMethodInsn(INVOKESPECIAL, superType, "<init>", mapping.signature + "V", false);
 
             visitor.visitVarInsn(ALOAD, 0);
             visitor.visitLdcInsn(id);
-            visitor.visitMethodInsn(INVOKESTATIC, "dmillerw/asm/Template", "getTemplate", "(I)Ldmillerw/asm/Template;");
+            visitor.visitMethodInsn(INVOKESTATIC, "dmillerw/asm/Template", "getTemplate", "(I)Ldmillerw/asm/Template;", false);
             visitor.visitFieldInsn(PUTFIELD, clazzDesc, "_template", "Ldmillerw/asm/Template;");
 
             visitor.visitVarInsn(ALOAD, 0);
@@ -163,7 +116,7 @@ public class Generator {
                 for (int i=0; i<mapping.params.length; i++) {
                     visitor.visitVarInsn(ASMUtils.getLoadCode(mapping.params[i]), i + 1);
                 }
-                visitor.visitMethodInsn(INVOKEVIRTUAL, tempType, name, mapping.signature + "V");
+                visitor.visitMethodInsn(INVOKEVIRTUAL, tempType, name, mapping.signature + "V", false);
             }
 
             visitor.visitInsn(RETURN);
@@ -198,7 +151,7 @@ public class Generator {
                 for (int i=0; i<mapping.params.length; i++) {
                     visitor.visitVarInsn(ASMUtils.getLoadCode(mapping.params[i]), i + 1);
                 }
-                visitor.visitMethodInsn(INVOKEVIRTUAL, tempType, name, mapping.signature);
+                visitor.visitMethodInsn(INVOKEVIRTUAL, tempType, name, mapping.signature, false);
                 visitor.visitInsn(ASMUtils.getReturnCode(mapping.returnType));
                 visitor.visitMaxs(mapping.params.length + 1, mapping.params.length + 1);
             }

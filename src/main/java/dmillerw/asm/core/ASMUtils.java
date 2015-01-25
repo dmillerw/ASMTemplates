@@ -1,6 +1,6 @@
 package dmillerw.asm.core;
 
-import net.minecraft.launchwrapper.Launch;
+import org.apache.commons.io.IOUtils;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
@@ -50,9 +50,13 @@ public class ASMUtils {
     }
     
     public static ClassNode getClassNode(Class<?> clazz) throws IOException {
+        String name = clazz.getName().replace(".", "/") + ".class";
+        byte[] data = IOUtils.toByteArray(clazz.getClassLoader().getResourceAsStream(name));
+
         ClassNode cnode = new ClassNode();
-        ClassReader reader = new ClassReader(Launch.classLoader.getClassBytes(clazz.getName()));
+        ClassReader reader = new ClassReader(data);
         reader.accept(cnode, 0);
+
         return cnode;
     }
 
