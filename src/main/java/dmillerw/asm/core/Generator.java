@@ -11,7 +11,6 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
 
-import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -23,10 +22,10 @@ public class Generator {
 
     private static final ASMClassLoader LOADER = new ASMClassLoader();
 
-    public static <T> Class<T> generateSubclass(Class<T> superclazz, Template<?> template) throws IOException {
-        int id = Template.addTemplate(template);
+    public static <T> Class<T> generateSubclass(Class<T> superclazz, Template<?> template) throws Exception {
+        final int id = Template.addTemplate(template);
 
-        ClassNode templateNode = ASMUtils.getClassNode(template.getClass());
+        final ClassNode templateNode = ASMUtils.getClassNode(template.getClass());
 
         final String superType = Type.getInternalName(superclazz);
         final String clazzName = superclazz.getName() + "_GENERATED_" + template.hashCode();
@@ -46,6 +45,7 @@ public class Generator {
         final Map<String, MethodNode> copyMethods = Maps.newHashMap();
         final Map<String, MethodNode> implementMethods = Maps.newHashMap();
 
+        // Start scanning for annotated methods in the template
         for (Method method : template.getClass().getDeclaredMethods()) {
             MConstructor mConstructor = method.getAnnotation(MConstructor.class);
             MOverride mOverride = method.getAnnotation(MOverride.class);
@@ -59,6 +59,14 @@ public class Generator {
 
             if (mOverride != null) {
                 Mapping mapping = new Mapping(method);
+
+                // We're overriding a method. Make sure the superclass actually has it
+                try {
+                    superclazz.getMethod(method.getName(), method.getParameterTypes());
+                } catch (NoSuchMethodException ex) {
+                    throw new RuntimeException("Cannot override " + method.getName() + " from " + superType + " as it doesn't exist");
+                }
+
                 methodMappings.put(method.getName(), mapping);
 
                 if (templateNode != null) {

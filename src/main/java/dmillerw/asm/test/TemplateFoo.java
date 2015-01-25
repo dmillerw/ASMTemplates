@@ -17,6 +17,11 @@ public class TemplateFoo extends Template<ClassFoo> implements Echo {
         _super.b();
     }
 
+    @MOverride
+    public void c() {
+
+    }
+
     @Override
     @MImplement
     public void echo() {
