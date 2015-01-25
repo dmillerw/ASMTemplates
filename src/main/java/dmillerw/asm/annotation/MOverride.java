@@ -15,5 +15,5 @@ public @interface MOverride {
      *
      * @return
      */
-    boolean copy() default false;
+    boolean copy() default true;
 }
