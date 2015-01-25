@@ -311,8 +311,6 @@ public class Generator {
                     }
                 }
 
-                System.out.println(ASMUtils.insnListToString(insnList));
-
                 insnList.accept(visitor);
                 visitor.visitMaxs(methodMapping.params.length + 1 + methodNode.maxStack, methodMapping.params.length + 1 + methodNode.maxLocals);
 
