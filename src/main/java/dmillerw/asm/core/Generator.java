@@ -3,6 +3,7 @@ package dmillerw.asm.core;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import dmillerw.asm.annotation.MConstructor;
+import dmillerw.asm.annotation.MImplement;
 import dmillerw.asm.annotation.MOverride;
 import dmillerw.asm.template.Template;
 import org.objectweb.asm.ClassWriter;
@@ -33,24 +34,27 @@ public class Generator {
 
         final String tempType = Type.getInternalName(template.getClass());
 
-        final List<Mapping> superCons = Lists.newArrayList();
-        final Map<String, String> descToNameMap = Maps.newHashMap();
+        final List<Mapping> constructors = Lists.newArrayList();
+        final Map<String, String> mappingDescToNameMap = Maps.newHashMap();
 
         for (Constructor constructor : superclazz.getDeclaredConstructors()) {
             Mapping mapping = new Mapping(constructor);
-            superCons.add(mapping);
+            constructors.add(mapping);
         }
 
         final Map<String, Mapping> methodMappings = Maps.newHashMap();
-        final Map<String, MethodNode> toCopy = Maps.newHashMap();
+        final Map<String, MethodNode> copyMethods = Maps.newHashMap();
+        final Map<String, MethodNode> implementMethods = Maps.newHashMap();
 
         for (Method method : template.getClass().getDeclaredMethods()) {
             MConstructor mConstructor = method.getAnnotation(MConstructor.class);
             MOverride mOverride = method.getAnnotation(MOverride.class);
+            MImplement mImplement = method.getAnnotation(MImplement.class);
+
             if (mConstructor != null) {
                 Mapping mapping = new Mapping(method);
                 String sig = mapping.signature.replace("V", "");
-                descToNameMap.put(sig, method.getName());
+                mappingDescToNameMap.put(sig, method.getName());
             }
 
             if (mOverride != null) {
@@ -61,12 +65,29 @@ public class Generator {
                     if (mOverride.copy()) {
                         for (MethodNode methodNode : templateNode.methods) {
                             if (methodNode.name.equals(method.getName()) && methodNode.desc.equals(mapping.signature)) {
-                                toCopy.put(methodNode.name, methodNode);
+                                copyMethods.put(methodNode.name, methodNode);
                             }
                         }
                     }
                 }
             }
+
+            if (mImplement != null) {
+                if (templateNode != null) {
+                    Mapping mapping = new Mapping(method);
+                    for (MethodNode methodNode : templateNode.methods) {
+                        if (methodNode.name.equals(method.getName()) && methodNode.desc.equals(mapping.signature)) {
+                            implementMethods.put(methodNode.name, methodNode);
+                        }
+                    }
+                }
+            }
+        }
+
+        Class<?>[] interfaces = template.getClass().getInterfaces();
+        String[] interfaceStrs = new String[interfaces.length];
+        for (int i = 0; i < interfaces.length; i++) {
+            interfaceStrs[i] = interfaces[i].getName().replace(".", "/");
         }
 
         ClassWriter writer = new ClassWriter(0);
@@ -78,14 +99,15 @@ public class Generator {
                 clazzDesc,
                 null,
                 superType,
-                new String[0]
+                interfaceStrs
         );
 
         writer.visitSource(".dynamic", null);
 
         writer.visitField(ACC_PROTECTED, "_template", "Ldmillerw/asm/template/Template;", null, null);
 
-        for (Mapping mapping : superCons) {
+        // Constructor handling
+        for (Mapping mapping : constructors) {
             visitor = writer.visitMethod(ACC_PUBLIC, "<init>", mapping.signature + "V", null, null);
             visitor.visitCode();
             visitor.visitVarInsn(ALOAD, 0);
@@ -104,8 +126,8 @@ public class Generator {
             visitor.visitVarInsn(ALOAD, 0);
             visitor.visitFieldInsn(PUTFIELD, "dmillerw/asm/template/Template", "_super", "Ljava/lang/Object;");
 
-            if (descToNameMap.containsKey(mapping.signature)) {
-                String name = descToNameMap.get(mapping.signature);
+            if (mappingDescToNameMap.containsKey(mapping.signature)) {
+                String name = mappingDescToNameMap.get(mapping.signature);
                 visitor.visitVarInsn(ALOAD, 0);
                 visitor.visitFieldInsn(GETFIELD, clazzDesc, "_template", "Ldmillerw/asm/template/Template;");
                 visitor.visitTypeInsn(CHECKCAST, tempType);
@@ -120,6 +142,7 @@ public class Generator {
             visitor.visitEnd();
         }
 
+        // Method implementations - copying and overidding
         for (Map.Entry<String, Mapping> entry : methodMappings.entrySet()) {
             String name = entry.getKey();
             Mapping mapping = entry.getValue();
@@ -127,8 +150,8 @@ public class Generator {
             visitor = writer.visitMethod(ACC_PUBLIC, name, mapping.signature, null, null);
             visitor.visitCode();
 
-            if (toCopy.containsKey(name)) {
-                MethodNode methodNode = toCopy.get(name);
+            if (copyMethods.containsKey(name)) {
+                MethodNode methodNode = copyMethods.get(name);
 
                 InsnList insnList = new InsnList();
 
@@ -160,6 +183,19 @@ public class Generator {
                 visitor.visitMaxs(mapping.params.length + 1, mapping.params.length + 1);
             }
 
+            visitor.visitEnd();
+        }
+
+        // Method handling - new implementations
+        for (Map.Entry<String, MethodNode> entry : implementMethods.entrySet()) {
+            String name = entry.getKey();
+            MethodNode node = entry.getValue();
+            String desc = node.desc;
+
+            visitor = writer.visitMethod(node.access, name, desc, null, null);
+            visitor.visitCode();
+            node.instructions.accept(visitor);
+            visitor.visitMaxs(node.maxStack, node.maxLocals);
             visitor.visitEnd();
         }
 
