@@ -9,11 +9,4 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MOverride {
 
-    /**
-     * Whether the contents of this method should directly be copied to the subclass
-     * Setting this to false (or not supplying it) will have this method be called via the callback instance
-     *
-     * @return
-     */
-    boolean copy() default true;
 }
