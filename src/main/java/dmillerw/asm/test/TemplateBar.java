@@ -5,7 +5,7 @@ import dmillerw.asm.annotation.MImplement;
 import dmillerw.asm.annotation.MOverride;
 import dmillerw.asm.template.Template;
 
-public class TemplateFoo extends Template<ClassFoo> implements Echo {
+public class TemplateBar extends Template<ClassBar> implements Echo {
 
     @MConstructor
     public void construct() {
@@ -13,7 +13,7 @@ public class TemplateFoo extends Template<ClassFoo> implements Echo {
     }
 
     @MOverride()
-    public void a() {
+    public void b() {
         _super.b();
     }
 

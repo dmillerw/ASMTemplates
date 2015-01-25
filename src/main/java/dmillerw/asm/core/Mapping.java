@@ -11,6 +11,11 @@ public class Mapping {
     public String name;
     public String signature;
 
+    public Mapping(String name, String signature) {
+        this.name = name;
+        this.signature = signature;
+    }
+
     public Mapping(Constructor constructor) {
         this.params = constructor.getParameterTypes();
         this.returnType = null;

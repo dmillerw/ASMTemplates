@@ -7,7 +7,7 @@ public class ClassFoo {
     }
 
     public void a() {
-        System.out.println("a");
+        System.out.println("I AM MASTER OF ALL BITCHES");
     }
 
     public void b() {

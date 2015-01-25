@@ -35,6 +35,9 @@ public class Generator {
     }
 
     public static <T> Class<T> generateSubclass(Class<T> superclazz, Class<? extends Template<?>> template) throws Exception {
+        // Super class node. Used for protecting the original methods when overridden
+        final ClassNode superNode = ASMUtils.getClassNode(superclazz);
+
         // Template class node. Used for copying methods
         final ClassNode templateNode = ASMUtils.getClassNode(template);
 
@@ -102,6 +105,14 @@ public class Generator {
                 for (MethodNode methodNode : templateNode.methods) {
                     if (methodNode.name.equals(mapping.name) && methodNode.desc.equals(mapping.signature)) {
                         methodNodes.put(mapping, methodNode);
+                    }
+                }
+
+                // Also grab the method node from the super class and store
+                Mapping defMapping = new Mapping("default_" + mapping.name, mapping.signature);
+                for (MethodNode methodNode : superNode.methods) {
+                    if (methodNode.name.equals(mapping.name) && methodNode.desc.equals(mapping.signature)) {
+                        methodNodes.put(defMapping, methodNode);
                     }
                 }
             }
@@ -182,12 +193,38 @@ public class Generator {
             visitor.visitEnd();
         }
 
-        // Method implementations - copying and overidding
+        // Method implementations - copying and overriding
         for (Mapping mapping : overrideMethods) {
-            visitor = writer.visitMethod(ACC_PUBLIC, mapping.name, mapping.signature, null, null);
+            MethodNode methodNode = methodNodes.get(mapping);
+            Mapping defMapping = new Mapping("default_" + mapping.name, mapping.signature);
+            MethodNode defNode = methodNodes.get(defMapping);
+
+            // Generate a new method that contains the super-class method instructions
+            visitor = writer.visitMethod(ACC_PUBLIC, "default_" + defNode.name, defNode.desc, null, null);
             visitor.visitCode();
 
-            MethodNode methodNode = methodNodes.get(mapping);
+            Iterator<AbstractInsnNode> iterator = defNode.instructions.iterator();
+            while (iterator.hasNext()) {
+                AbstractInsnNode insnNode = iterator.next();
+
+                // Stop once we get to the return
+                if (insnNode.getOpcode() == RETURN) {
+                    break;
+                } else {
+                    if (insnNode instanceof LabelNode || insnNode instanceof LineNumberNode)
+                        continue;
+
+                    insnNode.accept(visitor);
+                }
+            }
+
+            visitor.visitInsn(RETURN);
+            visitor.visitMaxs(defNode.maxStack, defNode.maxLocals);
+            visitor.visitEnd();
+
+            // Then generate the override method
+            visitor = writer.visitMethod(ACC_PUBLIC, mapping.name, mapping.signature, null, null);
+            visitor.visitCode();
 
             InsnList insnList = new InsnList();
 
@@ -199,7 +236,17 @@ public class Generator {
                     MethodInsnNode oldNode = (MethodInsnNode) methodNode.instructions.get(i + 2);
                     i += 3; // Skip the next two nodes
                     insnList.add(new VarInsnNode(ALOAD, 0));
-                    insnList.add(new MethodInsnNode(INVOKESPECIAL, superType, oldNode.name, oldNode.desc, false));
+
+                    Mapping oldMapping = new Mapping(oldNode.name, oldNode.desc);
+
+                    // If there's a super call to a method that's been overridden, pass it through
+                    // to the generated default method
+                    if (overrideMethods.contains(oldMapping)) {
+                        debug("Found super call to overridden method!");
+                        insnList.add(new MethodInsnNode(INVOKESPECIAL, clazzDesc, "default_" + oldNode.name, oldNode.desc, false));
+                    } else {
+                        insnList.add(new MethodInsnNode(INVOKESPECIAL, superType, oldNode.name, oldNode.desc, false));
+                    }
                 } else {
                     // Otherwise, just copy it into the new method
                     insnList.add(node);

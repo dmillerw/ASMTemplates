@@ -14,7 +14,7 @@ public class MainMod {
             ((Echo) foo1).echo();
         }
 
-        ClassFoo foo2 = Generator.generateSubclass(ClassFoo.class, TemplateFoo.class).newInstance();
+        ClassBar foo2 = Generator.generateSubclass(ClassBar.class, TemplateBar.class).newInstance();
         foo2.a();
         foo2.b();
 
