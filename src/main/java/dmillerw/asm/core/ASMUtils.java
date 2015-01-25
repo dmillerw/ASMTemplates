@@ -1,4 +1,4 @@
-package dmillerw.asm;
+package dmillerw.asm.core;
 
 import net.minecraft.launchwrapper.Launch;
 import org.objectweb.asm.ClassReader;

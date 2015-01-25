@@ -1,6 +1,8 @@
-package dmillerw.asm;
+package dmillerw.asm.test;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import dmillerw.asm.core.Generator;
+import dmillerw.asm.template.TemplateInventory;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;

@@ -1,7 +1,10 @@
-package dmillerw.asm;
+package dmillerw.asm.core;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import dmillerw.asm.annotation.MConstructor;
+import dmillerw.asm.annotation.MOverride;
+import dmillerw.asm.template.Template;
 import net.minecraft.launchwrapper.Launch;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;

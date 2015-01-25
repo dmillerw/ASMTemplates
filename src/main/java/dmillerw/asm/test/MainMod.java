@@ -1,4 +1,4 @@
-package dmillerw.asm;
+package dmillerw.asm.test;
 
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;

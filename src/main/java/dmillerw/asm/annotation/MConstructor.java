@@ -1,4 +1,4 @@
-package dmillerw.asm;
+package dmillerw.asm.annotation;
 
 
 import java.lang.annotation.ElementType;

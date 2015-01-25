@@ -1,5 +1,6 @@
-package dmillerw.asm;
+package dmillerw.asm.template;
 
+import dmillerw.asm.annotation.MOverride;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;

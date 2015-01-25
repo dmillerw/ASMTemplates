@@ -1,4 +1,4 @@
-package dmillerw.asm;
+package dmillerw.asm.template;
 
 import com.google.common.collect.Maps;
 
