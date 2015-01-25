@@ -30,6 +30,10 @@ public class ASMUtils {
     }
 
     public static int getReturnCode(Class<?> clazz) {
+        if (clazz == null || clazz == void.class) {
+            return Opcodes.RETURN;
+        }
+
         if (clazz == byte.class) {
             return Opcodes.IRETURN;
         } else if (clazz == boolean.class) {
@@ -85,6 +89,6 @@ public class ASMUtils {
             }
         }
 
-        return "";
+        return "V";
     }
 }

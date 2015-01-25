@@ -8,15 +8,11 @@ import dmillerw.asm.template.Template;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.*;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -32,7 +28,7 @@ public class Generator {
         ClassNode templateNode = ASMUtils.getClassNode(template.getClass());
 
         final String superType = Type.getInternalName(superclazz);
-        final String clazzName = superclazz.getName() + "$GENERATED_" + template.hashCode();
+        final String clazzName = superclazz.getName() + "_GENERATED_" + template.hashCode();
         final String clazzDesc = clazzName.replace(".", "/");
 
         final String tempType = Type.getInternalName(template.getClass());
@@ -87,7 +83,7 @@ public class Generator {
 
         writer.visitSource(".dynamic", null);
 
-        writer.visitField(ACC_PROTECTED, "_template", "Ldmillerw/asm/Template;", null, null);
+        writer.visitField(ACC_PROTECTED, "_template", "Ldmillerw/asm/template/Template;", null, null);
 
         for (Mapping mapping : superCons) {
             visitor = writer.visitMethod(ACC_PUBLIC, "<init>", mapping.signature + "V", null, null);
@@ -100,18 +96,18 @@ public class Generator {
 
             visitor.visitVarInsn(ALOAD, 0);
             visitor.visitLdcInsn(id);
-            visitor.visitMethodInsn(INVOKESTATIC, "dmillerw/asm/Template", "getTemplate", "(I)Ldmillerw/asm/Template;", false);
-            visitor.visitFieldInsn(PUTFIELD, clazzDesc, "_template", "Ldmillerw/asm/Template;");
+            visitor.visitMethodInsn(INVOKESTATIC, "dmillerw/asm/template/Template", "getTemplate", "(I)Ldmillerw/asm/template/Template;", false);
+            visitor.visitFieldInsn(PUTFIELD, clazzDesc, "_template", "Ldmillerw/asm/template/Template;");
 
             visitor.visitVarInsn(ALOAD, 0);
-            visitor.visitFieldInsn(GETFIELD, clazzDesc, "_template", "Ldmillerw/asm/Template;");
+            visitor.visitFieldInsn(GETFIELD, clazzDesc, "_template", "Ldmillerw/asm/template/Template;");
             visitor.visitVarInsn(ALOAD, 0);
-            visitor.visitFieldInsn(PUTFIELD, "dmillerw/asm/Template", "_super", "Ljava/lang/Object;");
+            visitor.visitFieldInsn(PUTFIELD, "dmillerw/asm/template/Template", "_super", "Ljava/lang/Object;");
 
             if (descToNameMap.containsKey(mapping.signature)) {
                 String name = descToNameMap.get(mapping.signature);
                 visitor.visitVarInsn(ALOAD, 0);
-                visitor.visitFieldInsn(GETFIELD, clazzDesc, "_template", "Ldmillerw/asm/Template;");
+                visitor.visitFieldInsn(GETFIELD, clazzDesc, "_template", "Ldmillerw/asm/template/Template;");
                 visitor.visitTypeInsn(CHECKCAST, tempType);
                 for (int i=0; i<mapping.params.length; i++) {
                     visitor.visitVarInsn(ASMUtils.getLoadCode(mapping.params[i]), i + 1);
@@ -134,11 +130,19 @@ public class Generator {
             if (toCopy.containsKey(name)) {
                 MethodNode methodNode = toCopy.get(name);
 
-                Iterator<AbstractInsnNode> iterator = methodNode.instructions.iterator();
-                while (iterator.hasNext()) {
-                    AbstractInsnNode node = iterator.next();
-                    if (node instanceof FieldInsnNode && ((FieldInsnNode) node).name.equals("_super")) {
-                        throw new RuntimeException(); // Hopefully temporary
+                InsnList insnList = new InsnList();
+
+                for (int i = 0; i < methodNode.instructions.size(); i++) {
+                    AbstractInsnNode node = methodNode.instructions.get(i);
+
+                    // If we find access to the template's _super field, turn it into a proper super call
+                    if (node instanceof FieldInsnNode && ((FieldInsnNode) node).name.equals("_super") && node.getOpcode() == GETFIELD) {
+                        MethodInsnNode oldNode = (MethodInsnNode) methodNode.instructions.get(i + 2);
+                        i += 3; // Skip the next two nodes
+                        insnList.add(new VarInsnNode(ALOAD, 0));
+                        insnList.add(new MethodInsnNode(INVOKESPECIAL, superType, oldNode.name, oldNode.desc, false));
+                    } else {
+                        insnList.add(node);
                     }
                 }
 
@@ -146,7 +150,7 @@ public class Generator {
                 visitor.visitMaxs(mapping.params.length + 1 + methodNode.maxStack, mapping.params.length + 1 + methodNode.maxLocals);
             } else {
                 visitor.visitVarInsn(ALOAD, 0);
-                visitor.visitFieldInsn(GETFIELD, clazzDesc, "_template", "Ldmillerw/asm/Template;");
+                visitor.visitFieldInsn(GETFIELD, clazzDesc, "_template", "Ldmillerw/asm/template/Template;");
                 visitor.visitTypeInsn(CHECKCAST, tempType);
                 for (int i=0; i<mapping.params.length; i++) {
                     visitor.visitVarInsn(ASMUtils.getLoadCode(mapping.params[i]), i + 1);

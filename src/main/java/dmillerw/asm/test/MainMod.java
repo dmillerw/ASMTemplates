@@ -2,15 +2,20 @@ package dmillerw.asm.test;
 
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import dmillerw.asm.core.ASMUtils;
+import dmillerw.asm.core.Generator;
 import net.minecraftforge.common.MinecraftForge;
 
 @Mod(modid = "ASM")
 public class MainMod {
 
     public static void main(String[] args) throws Exception {
-//        (new MainMod()).preInit(null);
-        ASMUtils.test();
+        ClassFoo foo1 = new ClassFoo();
+        foo1.a();
+        foo1.b();
+
+        ClassFoo foo2 = Generator.generateSubclass(ClassFoo.class, new TemplateFoo()).newInstance();
+        foo2.a();
+        foo2.b();
     }
 
     @Mod.EventHandler
