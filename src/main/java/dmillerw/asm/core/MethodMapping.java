@@ -3,7 +3,7 @@ package dmillerw.asm.core;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
-public class Mapping {
+public class MethodMapping {
 
     public Class<?>[] params;
     public Class<?> returnType;
@@ -11,12 +11,12 @@ public class Mapping {
     public String name;
     public String signature;
 
-    public Mapping(String name, String signature) {
+    public MethodMapping(String name, String signature) {
         this.name = name;
         this.signature = signature;
     }
 
-    public Mapping(Constructor constructor) {
+    public MethodMapping(Constructor constructor) {
         this.params = constructor.getParameterTypes();
         this.returnType = null;
 
@@ -32,7 +32,7 @@ public class Mapping {
         this.signature = stringBuilder.toString();
     }
 
-    public Mapping(Method method) {
+    public MethodMapping(Method method) {
         this.params = method.getParameterTypes();
         this.returnType = method.getReturnType();
 
@@ -63,10 +63,10 @@ public class Mapping {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
 
-        Mapping mapping = (Mapping) object;
+        MethodMapping methodMapping = (MethodMapping) object;
 
-        if (!name.equals(mapping.name)) return false;
-        if (!signature.equals(mapping.signature)) return false;
+        if (!name.equals(methodMapping.name)) return false;
+        if (!signature.equals(methodMapping.signature)) return false;
 
         return true;
     }

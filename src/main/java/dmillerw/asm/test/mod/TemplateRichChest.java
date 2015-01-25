@@ -1,4 +1,4 @@
-package dmillerw.asm.test;
+package dmillerw.asm.test.mod;
 
 import dmillerw.asm.annotation.MOverride;
 import dmillerw.asm.template.Template;

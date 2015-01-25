@@ -4,7 +4,7 @@ import com.google.common.collect.Maps;
 import org.apache.commons.io.IOUtils;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.*;
 
 import java.io.IOException;
 import java.util.Map;
@@ -13,13 +13,14 @@ import static org.objectweb.asm.Opcodes.*;
 
 public class ASMUtils {
 
-    public static Map<Integer, String> opCodes = Maps.newHashMap();
+    private static Map<Integer, String> opCodes = Maps.newHashMap();
 
     private static void put(String str, int code) {
         opCodes.put(code, str);
     }
 
     static {
+        put("F_NEW", F_NEW);
         put("NOP", NOP);
         put("ACONST_NULL", ACONST_NULL);
         put("ICONST_M1", ICONST_M1);
@@ -182,7 +183,35 @@ public class ASMUtils {
     public static String opcodeToString(int opcode) {
         return opCodes.get(opcode);
     }
-    
+
+    public static String nodeToString(AbstractInsnNode node) {
+        if (node instanceof FieldInsnNode) {
+            return opcodeToString(node.getOpcode()) + " {owner: " + ((FieldInsnNode) node).owner + ", name: " + ((FieldInsnNode) node).name + ", desc: " + ((FieldInsnNode) node).desc + "}";
+        } else if (node instanceof MethodInsnNode) {
+            return opcodeToString(node.getOpcode()) + " {owner: " + ((MethodInsnNode) node).owner + ", name: " + ((MethodInsnNode) node).name + ", desc: " + ((MethodInsnNode) node).desc + "}";
+        } else if (node instanceof VarInsnNode) {
+            return opcodeToString(node.getOpcode()) + " " + Integer.toString(((VarInsnNode) node).var);
+        } else if (node instanceof LdcInsnNode) {
+            return opcodeToString(node.getOpcode()) + " " + ((LdcInsnNode) node).cst.toString();
+        } else if (node instanceof TypeInsnNode) {
+            return opcodeToString(node.getOpcode()) + " " + ((TypeInsnNode) node).desc;
+        } else {
+            String opcode = opcodeToString(node.getOpcode());
+            return opcode == null ? Integer.toString(node.getOpcode()) : opcode;
+        }
+    }
+
+    public static String insnListToString(InsnList insnList) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 0; i < insnList.size(); i++) {
+            AbstractInsnNode node = insnList.get(i);
+            if (node != null) {
+                stringBuilder.append(i).append(": ").append(ASMUtils.nodeToString(node)).append("\n");
+            }
+        }
+        return stringBuilder.toString();
+    }
+
     public static int getLoadCode(Class<?> clazz) {
         if (clazz == byte.class) {
             return Opcodes.ILOAD;
@@ -264,5 +293,9 @@ public class ASMUtils {
         }
 
         return "V";
+    }
+
+    public static FieldInsnNode redirect(FieldInsnNode node, String owner) {
+        return new FieldInsnNode(node.getOpcode(), owner, node.name, node.desc);
     }
 }
