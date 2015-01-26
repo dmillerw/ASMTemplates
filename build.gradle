@@ -21,18 +21,13 @@ jar {
     include 'dmillerw/**'
 }
 
-publishing {
-    tasks.publish.dependsOn 'build'
-    publications {
-        mavenJava(MavenPublication) {
-            groupId "dmillerw.asm"
-            artifactId "asm-templates"
-            version "1.0.0"
-        }
-    }
+uploadArchives {
     repositories {
-        maven {
-            url "file://usr/share/nginx/html/maven"
+        mavenDeployer {
+            repository(url: "file://usr/share/nginx/html/maven")
+            pom.groupId = 'dmillerw.asm'
+            pom.artifactId = 'asm-templates'
+            pom.version = '1.0'
         }
     }
 }
