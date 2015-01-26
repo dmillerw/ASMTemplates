@@ -16,7 +16,10 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.11'
 }
 
-task myJar(type: Jar)
+jar {
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    include 'dmillerw/**'
+}
 
 publishing {
     tasks.publish.dependsOn 'build'
@@ -25,8 +28,6 @@ publishing {
             groupId "dmillerw.asm"
             artifactId "asm-templates"
             version "1.0.0"
-
-            artifact myJar
         }
     }
     repositories {
@@ -34,8 +35,4 @@ publishing {
             url "file://usr/share/nginx/html/maven"
         }
     }
-}
-
-artifacts {
-    archives myJar
 }
