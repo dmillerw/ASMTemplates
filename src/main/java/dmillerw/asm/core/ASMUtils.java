@@ -3,12 +3,10 @@ package dmillerw.asm.core;
 import com.google.common.collect.Maps;
 import org.apache.commons.io.IOUtils;
 import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
 
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -214,14 +212,6 @@ public class ASMUtils {
         return stringBuilder.toString();
     }
 
-    public static void accept(MethodVisitor methodVisitor, LinkedList<AbstractInsnNode> insnNodes) {
-        for (AbstractInsnNode node : insnNodes) {
-            if (node != null) {
-                node.accept(methodVisitor);
-            }
-        }
-    }
-
     public static int getLoadCode(Class<?> clazz) {
         if (clazz == byte.class) {
             return Opcodes.ILOAD;
@@ -279,26 +269,6 @@ public class ASMUtils {
         } catch (IOException ignore) {
             return null;
         }
-    }
-
-    public static InsnList copyInsnList(InsnList insnList) {
-        InsnList clone = new InsnList();
-
-        // used to map the old labels to their cloned counterpart
-        Map<LabelNode, LabelNode> labelMap = Maps.newHashMap();
-
-        // build the label map
-        for (AbstractInsnNode instruction = insnList.getFirst(); instruction != null; instruction = instruction.getNext()) {
-            if (instruction instanceof LabelNode) {
-                labelMap.put(((LabelNode) instruction), new LabelNode());
-            }
-        }
-
-        for (AbstractInsnNode instruction = insnList.getFirst(); instruction != null; instruction = instruction.getNext()) {
-            clone.add(instruction.clone(labelMap));
-        }
-
-        return clone;
     }
 
     public static String getSignature(Class<?> clazz) {
