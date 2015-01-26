@@ -236,18 +236,7 @@ public class SubclassGenerator<T> {
 
         classWriter.visitEnd();
 
-        byte[] data = classWriter.toByteArray();
-
-        /*ClassNode cnode = new ClassNode();
-        ClassReader reader = new ClassReader(data);
-        reader.accept(cnode, 0);
-
-        for (MethodNode methodNode : cnode.methods) {
-            System.out.println(" * * " + methodNode.name + " * * ");
-            System.out.println(ASMUtils.insnListToString(methodNode.instructions));
-        }*/
-
-        Class<?> clazz = LOADER.define(subName, data);
+        Class<?> clazz = LOADER.define(subName, classWriter.toByteArray());
         return (Class<T>) clazz;
     }
 
@@ -270,77 +259,20 @@ public class SubclassGenerator<T> {
             int maxLocals = methodMapping.params.length + 2;
             int maxStack = methodMapping.params.length + 1;
 
-            InsnList insnList = new InsnList();
-
             // If the template has the same constructor
             // We loop because the constructors found in template are proper methods, and have names
             for (MethodMapping methodMapping1 : templateConstructors) {
                 if (methodMapping1.signature.equals(methodMapping.signature)) {
                     debug("Found matching super constructor in template: " + methodMapping1);
-
                     MethodNode methodNode = methodNodes.get(methodMapping1);
 
-                    NodeCopier nodeCopier = new NodeCopier(methodNode.instructions);
+                    InsnList insnList = interpretAndCopyNodes(methodNode);
 
-                    int skip = 0;
-                    int index = 0;
-                    Iterator<AbstractInsnNode> iterator = methodNode.instructions.iterator();
-                    while (iterator.hasNext()) {
-                        AbstractInsnNode insnNode = iterator.next();
-
-                        if (skip > 0) {
-                            debug("Skipping {" + ASMUtils.nodeToString(insnNode) + "} " + skip + " left.");
-                            skip--;
-                            index++;
-                            continue;
-                        }
-
-                        if (insnNode instanceof MethodInsnNode) {
-                            AbstractInsnNode newNode = redirectLocalMethod(methodNode, (MethodInsnNode) insnNode, index);
-                            if (newNode != null) {
-                                nodeCopier.copyTo(newNode, insnList);
-                            } else {
-                                nodeCopier.copyTo(insnNode, insnList);
-                            }
-                        } else if (insnNode instanceof FieldInsnNode) {
-                            AbstractInsnNode newNode = redirectSuperCall(methodNode, (FieldInsnNode) insnNode, index);
-                            if (newNode != null) {
-                                debug("Redirected super call!");
-                                debug(" * OLD: " + ASMUtils.nodeToString(insnNode));
-                                debug(" * NEW: " + ASMUtils.nodeToString(newNode));
-
-                                skip = 2; // Skipping the GETFIELD and the CHECKCAST
-
-                                nodeCopier.copyTo(newNode, insnList);
-                            } else {
-                                newNode = redirectLocalField(methodNode, (FieldInsnNode) insnNode, index);
-                                if (newNode != null) {
-                                    nodeCopier.copyTo(newNode, insnList);
-                                } else {
-                                    nodeCopier.copyTo(insnNode, insnList);
-                                }
-                            }
-                        } else {
-                            // Stop once we get to the return
-                            if (insnNode.getOpcode() == RETURN) {
-                                maxLocals += methodNode.maxLocals;
-                                maxStack += methodNode.maxStack;
-                                break;
-                            } else {
-                                nodeCopier.copyTo(insnNode, insnList);
-                            }
-                        }
-
-                        index++;
-                    }
+                    insnList.accept(methodVisitor);
 
                     break;
                 }
             }
-
-            System.out.println(ASMUtils.insnListToString(insnList));
-
-            insnList.accept(methodVisitor);
 
             methodVisitor.visitInsn(RETURN);
             methodVisitor.visitMaxs(maxLocals, maxStack);
@@ -363,7 +295,6 @@ public class SubclassGenerator<T> {
 
             insnList = new InsnList();
 
-
             Iterator<AbstractInsnNode> iterator = defNode.instructions.iterator();
             while (iterator.hasNext()) {
                 AbstractInsnNode insnNode = iterator.next();
@@ -383,54 +314,7 @@ public class SubclassGenerator<T> {
             methodVisitor = classWriter.visitMethod(ACC_PUBLIC, methodMapping.name, methodMapping.signature, null, null);
             methodVisitor.visitCode();
 
-            insnList = new InsnList();
-
-            NodeCopier nodeCopier = new NodeCopier(methodNode.instructions);
-
-            int skip = 0;
-            int index = 0;
-            iterator = methodNode.instructions.iterator();
-            while (iterator.hasNext()) {
-                AbstractInsnNode insnNode = iterator.next();
-
-                if (skip > 0) {
-                    debug("Skipping {" + ASMUtils.nodeToString(insnNode) + "} " + skip + " left.");
-                    skip--;
-                    index++;
-                    continue;
-                }
-
-                if (insnNode instanceof FieldInsnNode) {
-                    AbstractInsnNode newNode = redirectSuperCall(methodNode, (FieldInsnNode) insnNode, index);
-                    if (newNode != null) {
-                        debug("Redirected super call!");
-                        debug(" * OLD: " + ASMUtils.nodeToString(insnNode));
-                        debug(" * NEW: " + ASMUtils.nodeToString(newNode));
-
-                        skip = 2; // Skipping the GETFIELD and the CHECKCAST
-
-                        nodeCopier.copyTo(newNode, insnList);
-                    } else {
-                        newNode = redirectLocalField(methodNode, (FieldInsnNode) insnNode, index);
-                        if (newNode != null) {
-                            nodeCopier.copyTo(newNode, insnList);
-                        } else {
-                            nodeCopier.copyTo(insnNode, insnList);
-                        }
-                    }
-                } else {
-                    /*// Stop once we get to the return
-                    if (insnNode.getOpcode() == RETURN) {
-                        maxLocals += methodNode.maxLocals;
-                        maxStack += methodNode.maxStack;
-                        break;
-                    } else {*/
-                    nodeCopier.copyTo(insnNode, insnList);
-//                    }
-                }
-
-                index++;
-            }
+            insnList = interpretAndCopyNodes(methodNode);
 
             insnList.accept(methodVisitor);
 
@@ -451,61 +335,7 @@ public class SubclassGenerator<T> {
             methodVisitor = classWriter.visitMethod(methodNode.access, methodMapping.name, desc, null, null);
             methodVisitor.visitCode();
 
-            insnList = new InsnList();
-
-            NodeCopier nodeCopier = new NodeCopier(methodNode.instructions);
-
-            int skip = 0;
-            int index = 0;
-            Iterator<AbstractInsnNode> iterator = methodNode.instructions.iterator();
-            while (iterator.hasNext()) {
-                AbstractInsnNode insnNode = iterator.next();
-
-                if (skip > 0) {
-                    debug("Skipping {" + ASMUtils.nodeToString(insnNode) + "} " + skip + " left.");
-                    skip--;
-                    index++;
-                    continue;
-                }
-
-                if (insnNode instanceof MethodInsnNode) {
-                    AbstractInsnNode newNode = redirectLocalMethod(methodNode, (MethodInsnNode) insnNode, index);
-                    if (newNode != null) {
-                        nodeCopier.copyTo(newNode, insnList);
-                    } else {
-                        nodeCopier.copyTo(insnNode, insnList);
-                    }
-                } else if (insnNode instanceof FieldInsnNode) {
-                    AbstractInsnNode newNode = redirectSuperCall(methodNode, (FieldInsnNode) insnNode, index);
-                    if (newNode != null) {
-                        debug("Redirected super call!");
-                        debug(" * OLD: " + ASMUtils.nodeToString(insnNode));
-                        debug(" * NEW: " + ASMUtils.nodeToString(newNode));
-
-                        skip = 2; // Skipping the GETFIELD and the CHECKCAST
-
-                        nodeCopier.copyTo(newNode, insnList);
-                    } else {
-                        newNode = redirectLocalField(methodNode, (FieldInsnNode) insnNode, index);
-                        if (newNode != null) {
-                            nodeCopier.copyTo(newNode, insnList);
-                        } else {
-                            nodeCopier.copyTo(insnNode, insnList);
-                        }
-                    }
-                } else {
-//                    // Stop once we get to the return
-//                    if (insnNode.getOpcode() == RETURN) {
-//                        maxLocals += methodNode.maxLocals;
-//                        maxStack += methodNode.maxStack;
-//                        break;
-//                    } else {
-                    nodeCopier.copyTo(insnNode, insnList);
-//                    }
-                }
-
-                index++;
-            }
+            insnList = interpretAndCopyNodes(methodNode);
 
             insnList.accept(methodVisitor);
 
@@ -514,6 +344,71 @@ public class SubclassGenerator<T> {
         }
     }
 
+    private InsnList interpretAndCopyNodes(MethodNode methodNode) {
+        NodeCopier nodeCopier = new NodeCopier(methodNode.instructions);
+        InsnList insnList = new InsnList();
+
+        int skip = 0;
+        int index = 0;
+
+        Iterator<AbstractInsnNode> iterator = methodNode.instructions.iterator();
+        while (iterator.hasNext()) {
+            AbstractInsnNode insnNode = iterator.next();
+
+            if (skip > 0) {
+                debug("Skipping {" + ASMUtils.nodeToString(insnNode) + "} " + skip + " left.");
+                skip--;
+                index++;
+                continue;
+            }
+
+            if (insnNode instanceof MethodInsnNode) {
+                AbstractInsnNode newNode = redirectLocalMethod((MethodInsnNode) insnNode);
+                if (newNode != null) {
+                    nodeCopier.copyTo(newNode, insnList);
+                } else {
+                    nodeCopier.copyTo(insnNode, insnList);
+                }
+            } else if (insnNode instanceof FieldInsnNode) {
+                AbstractInsnNode newNode = redirectSuperCall(methodNode, (FieldInsnNode) insnNode, index);
+                if (newNode != null) {
+                    debug("Redirected super call!");
+                    debug(" * OLD: " + ASMUtils.nodeToString(insnNode));
+                    debug(" * NEW: " + ASMUtils.nodeToString(newNode));
+
+                    skip = 2; // Skipping the GETFIELD and the CHECKCAST
+
+                    nodeCopier.copyTo(newNode, insnList);
+                } else {
+                    newNode = redirectLocalField((FieldInsnNode) insnNode);
+                    if (newNode != null) {
+                        nodeCopier.copyTo(newNode, insnList);
+                    } else {
+                        nodeCopier.copyTo(insnNode, insnList);
+                    }
+                }
+            } else {
+                nodeCopier.copyTo(insnNode, insnList);
+            }
+
+            index++;
+        }
+
+        return insnList;
+    }
+
+    /**
+     * Take a FieldInsnNode and determines whether or not it should be treated as a super call
+     * If so, it looks and sees whether it's a field or method call, and delegates accordingly
+     * <p/>
+     * If it's a method call, we check to see if there's a default_ method, and if so, we redirect
+     * the call to the that default method, removing the in-between bytecode (GETFIELD and CHECKCAST)
+     * <p/>
+     * If it's a field call, we simply chop out the GETFIELD call to the super field, and redirect directly
+     * to the field in the subclass
+     *
+     * @return Whatever node has been generated to properly redirect
+     */
     private AbstractInsnNode redirectSuperCall(MethodNode methodNode, FieldInsnNode fieldNode, int index) {
         if (fieldNode.name.equals("_super") && fieldNode.getOpcode() == GETFIELD) {
             AbstractInsnNode nextNode = methodNode.instructions.get(index + 1);
@@ -549,7 +444,11 @@ public class SubclassGenerator<T> {
         }
     }
 
-    private AbstractInsnNode redirectLocalField(MethodNode methodNode, FieldInsnNode fieldNode, int index) {
+    /**
+     * Takes a FieldInsnNode and re-directs it to the defined super class IF and ONLY IF it currently points
+     * to the template as its owner
+     */
+    private AbstractInsnNode redirectLocalField(FieldInsnNode fieldNode) {
         if (fieldNode.owner.equals(templateType)) {
             return ASMUtils.redirect(fieldNode, subType);
         } else {
@@ -557,7 +456,11 @@ public class SubclassGenerator<T> {
         }
     }
 
-    private AbstractInsnNode redirectLocalMethod(MethodNode methodNode, MethodInsnNode methodInsnNode, int index) {
+    /**
+     * Takes a MethodInsnNode and re-directs it to the defined super class IF and ONLY IF it currently points
+     * to the template as its owner
+     */
+    private AbstractInsnNode redirectLocalMethod(MethodInsnNode methodInsnNode) {
         if (methodInsnNode.owner.equals(templateType)) {
             return ASMUtils.redirect(methodInsnNode, subType);
         } else {
