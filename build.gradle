@@ -24,7 +24,7 @@ jar {
 uploadArchives {
     repositories {
         mavenDeployer {
-            repository(url: "/usr/share/nginx/html/maven")
+            repository(url: "file:///usr/share/nginx/html/maven")
             pom.groupId = 'dmillerw.asm'
             pom.artifactId = 'asm-templates'
             pom.version = '1.0'
