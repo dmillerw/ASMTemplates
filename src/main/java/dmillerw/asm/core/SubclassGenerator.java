@@ -261,8 +261,8 @@ public class SubclassGenerator<T> {
             }
             methodVisitor.visitMethodInsn(INVOKESPECIAL, superType, "<init>", methodMapping.signature + "V", false);
 
-            int maxLocals = methodMapping.params.length + 2;
             int maxStack = methodMapping.params.length + 1;
+            int maxLocals = methodMapping.params.length + 2;
 
             // If the template has the same constructor
             // We loop because the constructors found in template are proper methods, and have names
@@ -272,15 +272,17 @@ public class SubclassGenerator<T> {
                     MethodNode methodNode = methodNodes.get(methodMapping1);
 
                     InsnList insnList = interpretAndCopyNodes(methodNode);
-
                     insnList.accept(methodVisitor);
+
+                    maxStack += methodNode.maxStack;
+                    maxLocals += methodNode.maxLocals;
 
                     break;
                 }
             }
 
             methodVisitor.visitInsn(RETURN);
-            methodVisitor.visitMaxs(maxLocals, maxStack);
+            methodVisitor.visitMaxs(maxStack, maxLocals);
             methodVisitor.visitEnd();
         }
     }
