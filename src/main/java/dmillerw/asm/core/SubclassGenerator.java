@@ -7,7 +7,6 @@ import dmillerw.asm.annotation.MField;
 import dmillerw.asm.annotation.MImplement;
 import dmillerw.asm.annotation.MOverride;
 import dmillerw.asm.template.Template;
-import jdk.internal.org.objectweb.asm.Opcodes;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
@@ -426,7 +425,7 @@ public class SubclassGenerator<T> {
             AbstractInsnNode nextNode = methodNode.instructions.get(index + 1);
 
             // We're for certain handling usage of the _super field
-            if (nextNode.getOpcode() == Opcodes.CHECKCAST) {
+            if (nextNode.getOpcode() == CHECKCAST) {
                 nextNode = methodNode.instructions.get(index + 2);
 
                 if (nextNode instanceof MethodInsnNode) {
