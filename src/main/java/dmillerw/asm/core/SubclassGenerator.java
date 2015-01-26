@@ -25,6 +25,11 @@ import static org.objectweb.asm.Opcodes.*;
 
 public class SubclassGenerator<T> {
 
+    public static <T> Class<T> generateSubclass(Class<T> superClass, Class<? extends Template<?>> templateClass) {
+        SubclassGenerator<T> subclassGenerator = new SubclassGenerator<T>(superClass, templateClass);
+        return subclassGenerator.generateSubclass();
+    }
+
     private static final ASMClassLoader LOADER = new ASMClassLoader();
 
     private static class ASMClassLoader extends ClassLoader {
@@ -344,6 +349,11 @@ public class SubclassGenerator<T> {
         }
     }
 
+    /**
+     * Reads all instructions from a method node, and copies them into a new InsnList
+     * <p/>
+     * If the node needs to be modified at all (redirects, super calls) that's done as well
+     */
     private InsnList interpretAndCopyNodes(MethodNode methodNode) {
         NodeCopier nodeCopier = new NodeCopier(methodNode.instructions);
         InsnList insnList = new InsnList();
