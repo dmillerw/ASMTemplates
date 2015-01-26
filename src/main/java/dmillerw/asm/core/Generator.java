@@ -7,6 +7,7 @@ import dmillerw.asm.annotation.MField;
 import dmillerw.asm.annotation.MImplement;
 import dmillerw.asm.annotation.MOverride;
 import dmillerw.asm.template.Template;
+import jdk.internal.org.objectweb.asm.Opcodes;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassWriter;
@@ -282,23 +283,30 @@ public class Generator {
 
                     if (node instanceof FieldInsnNode) {
                         if (((FieldInsnNode) node).name.equals("_super") && node.getOpcode() == GETFIELD) {
-                            //TODO This is hard-coded for super methods
-                            //TODO Add support for super fields
+                            AbstractInsnNode nextNode = methodNode.instructions.get(i + 1);
+                            // We're for certain handling usage of the _super field
+                            if (nextNode.getOpcode() == Opcodes.CHECKCAST) {
+                                nextNode = methodNode.instructions.get(i + 2);
 
-                            MethodInsnNode oldNode = (MethodInsnNode) methodNode.instructions.get(i + 2);
-                            i += 3; // Skip the next two nodes
-                            insnList.add(new VarInsnNode(ALOAD, 0));
+                                i += 2; // Skipping the GETFIELD and the CHECKCAST
 
-                            MethodMapping oldMethodMapping = new MethodMapping(oldNode.name, oldNode.desc);
+                                if (nextNode instanceof MethodInsnNode) {
+                                    MethodInsnNode nextMethodNode = (MethodInsnNode) nextNode;
+                                    MethodMapping oldMethodMapping = new MethodMapping(nextMethodNode.name, nextMethodNode.desc);
 
-                            // If there's a super call to a method that's been overridden, pass it through
-                            // to the generated default method
-                            if (overrideMethods.contains(oldMethodMapping)) {
-                                debug("Found super call to overridden method!");
-                                // Fun fact. This somehow handles super super super methods and I don't even know how
-                                insnList.add(new MethodInsnNode(INVOKESPECIAL, clazzDesc, "default_" + oldNode.name, oldNode.desc, false));
-                            } else {
-                                insnList.add(new MethodInsnNode(INVOKESPECIAL, superType, oldNode.name, oldNode.desc, false));
+                                    // If there's a super call to a method that's been overridden, pass it through
+                                    // to the generated default method
+                                    if (overrideMethods.contains(oldMethodMapping)) {
+                                        debug("Found super call to overridden method!");
+                                        // Fun fact. This somehow handles super super super methods and I don't even know how
+                                        insnList.add(new MethodInsnNode(INVOKESPECIAL, clazzDesc, "default_" + nextMethodNode.name, nextMethodNode.desc, false));
+                                    } else {
+                                        insnList.add(new MethodInsnNode(INVOKESPECIAL, superType, nextMethodNode.name, nextMethodNode.desc, false));
+                                    }
+                                } else if (nextNode instanceof FieldInsnNode) {
+                                    FieldInsnNode nextFieldNode = (FieldInsnNode) nextNode;
+                                    insnList.add(ASMUtils.redirect(nextFieldNode, clazzDesc));
+                                }
                             }
                         } else if (((FieldInsnNode) node).owner.equals(tempType)) {
                             insnList.add(ASMUtils.redirect((FieldInsnNode) node, clazzDesc));
