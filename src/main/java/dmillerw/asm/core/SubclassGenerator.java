@@ -24,7 +24,7 @@ import static org.objectweb.asm.Opcodes.*;
 
 public class SubclassGenerator<T> {
 
-    public static <T> Class<T> generateSubclass(Class<T> superClass, Class<? extends Template<?>> templateClass) {
+    public static <T> Class<T> generateSubclass(Class<?> superClass, Class<? extends Template<T>> templateClass) {
         SubclassGenerator<T> subclassGenerator = new SubclassGenerator<T>(superClass, templateClass);
         return subclassGenerator.generateSubclass();
     }
@@ -84,7 +84,7 @@ public class SubclassGenerator<T> {
     // All collected field nodes. Used for copying mainly
     final Map<FieldMapping, FieldNode> fieldNodes = Maps.newHashMap();
 
-    public SubclassGenerator(Class<T> superClass, Class<? extends Template<?>> templateClass) {
+    public SubclassGenerator(Class<?> superClass, Class<? extends Template<T>> templateClass) {
         this.superClass = superClass;
         this.templateClass = templateClass;
         this.superNode = ASMUtils.getClassNode(superClass);
