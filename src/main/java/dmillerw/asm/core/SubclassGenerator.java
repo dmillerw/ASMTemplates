@@ -2,11 +2,7 @@ package dmillerw.asm.core;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import dmillerw.asm.annotation.MConstructor;
-import dmillerw.asm.annotation.MField;
-import dmillerw.asm.annotation.MImplement;
-import dmillerw.asm.annotation.MOverride;
-import dmillerw.asm.template.Template;
+import dmillerw.asm.annotation.*;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
@@ -150,11 +146,16 @@ public class SubclassGenerator<T> {
             MConstructor mConstructor = method.getAnnotation(MConstructor.class);
             MOverride mOverride = method.getAnnotation(MOverride.class);
             MImplement mImplement = method.getAnnotation(MImplement.class);
+            MCastParam mCastParam = method.getAnnotation(MCastParam.class);
 
             if (mConstructor != null) {
                 MethodMapping methodMapping = new MethodMapping(method);
 
                 methodMapping.signature = methodMapping.signature.substring(0, methodMapping.signature.length() - 1);
+
+                if (mCastParam != null) {
+                    methodMapping.signature = ASMUtils.castSignature(methodMapping.signature, mCastParam);
+                }
 
                 for (MethodNode methodNode : templateNode.methods) {
                     if (methodNode.name.equals(methodMapping.name) && methodNode.desc.equals(methodMapping.signature + "V")) {
@@ -165,44 +166,66 @@ public class SubclassGenerator<T> {
                 debug("Found template constructor: " + methodMapping.toString());
 
                 templateConstructors.add(methodMapping);
-            }
-
-            if (mOverride != null) {
+            } else if (mOverride != null) {
                 MethodMapping methodMapping = new MethodMapping(method);
+                String original = methodMapping.signature;
 
                 debug("Overridding method: " + methodMapping);
 
+                if (mCastParam != null) {
+                    String cast = ASMUtils.castSignature(original, mCastParam);
+                    debug("Found MCastParam annotation. Changing " + original + " to " + cast);
+                    methodMapping.signature = cast;
+                }
+
+                boolean foundInSuperClass = false;
+
                 // We're overriding a method. Make sure the superclass actually has it
-                try {
-                    superClass.getMethod(method.getName(), method.getParameterTypes());
-                } catch (NoSuchMethodException ex) {
-                    throw new RuntimeException("Cannot override " + method.getName() + " from " + superType + " as it doesn't exist");
-                }
-
-                overrideMethods.add(methodMapping);
-
-                for (MethodNode methodNode : templateNode.methods) {
-                    if (methodNode.name.equals(methodMapping.name) && methodNode.desc.equals(methodMapping.signature)) {
-                        methodNodes.put(methodMapping, methodNode);
-                    }
-                }
-
-                // Also grab the method node from the super class and store
-                MethodMapping defMethodMapping = new MethodMapping("default_" + methodMapping.name, methodMapping.signature);
                 for (MethodNode methodNode : superNode.methods) {
                     if (methodNode.name.equals(methodMapping.name) && methodNode.desc.equals(methodMapping.signature)) {
-                        methodNodes.put(defMethodMapping, methodNode);
+                        foundInSuperClass = true;
+                        break;
                     }
                 }
-            }
 
-            if (mImplement != null) {
+                if (foundInSuperClass) {
+                    overrideMethods.add(methodMapping);
+
+                    for (MethodNode methodNode : templateNode.methods) {
+                        // We use original here just in-case the signature was modified, as the template will
+                        // still be using the old signature
+                        if (methodNode.name.equals(methodMapping.name) && methodNode.desc.equals(original)) {
+                            methodNodes.put(methodMapping, methodNode);
+                            break;
+                        }
+                    }
+
+                    // Also grab the method node from the super class and store
+                    MethodMapping defMethodMapping = new MethodMapping("default_" + methodMapping.name, methodMapping.signature);
+                    for (MethodNode methodNode : superNode.methods) {
+                        if (methodNode.name.equals(methodMapping.name) && methodNode.desc.equals(methodMapping.signature)) {
+                            methodNodes.put(defMethodMapping, methodNode);
+                        }
+                    }
+                } else {
+                    debug("Failed to override " + method);
+                }
+            } else if (mImplement != null) {
                 MethodMapping methodMapping = new MethodMapping(method);
+                String original = methodMapping.signature;
+
+                if (mCastParam != null) {
+                    String cast = ASMUtils.castSignature(original, mCastParam);
+                    debug("Found MCastParam annotation. Changing " + original + " to " + cast);
+                    methodMapping.signature = cast;
+                }
 
                 implementMethods.add(methodMapping);
 
                 for (MethodNode methodNode : templateNode.methods) {
-                    if (methodNode.name.equals(methodMapping.name) && methodNode.desc.equals(methodMapping.signature)) {
+                    // We use original here just in-case the signature was modified, as the template will
+                    // still be using the old signature
+                    if (methodNode.name.equals(methodMapping.name) && methodNode.desc.equals(original)) {
                         methodNodes.put(methodMapping, methodNode);
                     }
                 }

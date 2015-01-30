@@ -1,27 +1,14 @@
 package dmillerw.asm.test;
 
-import dmillerw.asm.annotation.MImplement;
+import dmillerw.asm.annotation.MCastParam;
 import dmillerw.asm.annotation.MOverride;
-import dmillerw.asm.template.Template;
+import dmillerw.asm.core.Template;
 
-public class TemplateFoo extends Template<ClassFoo> implements Echo {
-
-    @MOverride
-    public void foo() {
-        System.out.println("Override.foo()");
-    }
+public class TemplateFoo extends Template<ClassFoo> {
 
     @MOverride
-    public void bar() {
-        System.out.println("Override.bar()");
-    }
-
-    @MImplement
-    @Override
-    public void echo() {
-        _super.foo();
-        _super.bar();
-        foo();
-        bar();
+    @MCastParam(index = 0, cast = "dmillerw.asm.test.ClassBar")
+    public void foo(Object bar) {
+        ((Echo)bar).echo();
     }
 }

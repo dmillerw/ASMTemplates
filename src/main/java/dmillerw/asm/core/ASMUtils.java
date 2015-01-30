@@ -1,12 +1,15 @@
 package dmillerw.asm.core;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import dmillerw.asm.annotation.MCastParam;
 import org.apache.commons.io.IOUtils;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -297,6 +300,144 @@ public class ASMUtils {
         }
 
         return "V";
+    }
+
+    public static String unboxSignature(String signature) {
+        StringBuilder stringBuilder = new StringBuilder();
+
+        boolean reading = false;
+        StringBuilder boxed = new StringBuilder();
+
+        for (char c : signature.replace("/", ".").toCharArray()) {
+            if (c == 'L') {
+                reading = true;
+            } else if (c == ';') {
+                reading = false;
+                stringBuilder.append(boxedSigToPrimitive(boxed.toString()));
+                boxed = new StringBuilder();
+            } else {
+                if (reading) {
+                    boxed.append(c);
+                } else {
+                    stringBuilder.append    (c);
+                }
+            }
+        }
+
+        return stringBuilder.toString().replace(".", "/");
+    }
+
+    public static String[] splitSignature(String signature) {
+        List<String> list = Lists.newArrayList();
+
+        String returnValue = signature.substring(signature.lastIndexOf(")") + 1);
+
+        signature = signature.substring(0, signature.lastIndexOf(")"));
+        signature = signature.replace("(", "");
+        signature = signature.replace(")", "");
+
+        boolean array = false;
+        boolean reading = false;
+        StringBuilder builder = new StringBuilder();
+
+        for (char c : signature.replace("/", ".").toCharArray()) {
+            if (c == '[') {
+                array = true;
+            } else if (c == 'L') {
+                reading = true;
+            } else if (c == ';') {
+                String result = builder.toString().replace(".", "/");
+                if (array) {
+                    result = "[L" + result + ";";
+                } else {
+                    result = "L" + result + ";";
+                }
+
+                list.add(result);
+
+                builder = new StringBuilder();
+                reading = false;
+                array = false;
+            } else {
+                if (reading) {
+                    builder.append(c);
+                } else {
+                    list.add(String.valueOf(c));
+                }
+            }
+        }
+
+        list.add(returnValue);
+
+        return list.toArray(new String[list.size()]);
+    }
+
+    public static String joinSignatureArray(String[] array) {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("(");
+        for (int i=0; i<array.length; i++) {
+            if (i == array.length - 1)
+                stringBuilder.append(")");
+
+            String str = array[i];
+            stringBuilder.append(str);
+        }
+        return stringBuilder.toString();
+    }
+
+    public static String castSignature(String signature, MCastParam annotation) {
+        String[] array = splitSignature(signature);
+
+        boolean isArray = false;
+        String sig = "";
+
+        if (annotation.index() == -1) {
+            sig = array[array.length - 1];
+        } else {
+            sig = array[annotation.index()];
+        }
+
+        if (sig.length() > 1) {
+            if (sig.contains("[")) {
+                isArray = true;
+            }
+
+            sig = annotation.cast().replace(".", "/");
+
+            if (isArray) {
+                sig = "[L" + sig + ";";
+            } else {
+                sig = "L" + sig + ";";
+            }
+        }
+
+        if (annotation.index() == -1) {
+            array[array.length - 1] = sig;
+        } else {
+            array[annotation.index()] = sig;
+        }
+
+        return joinSignatureArray(array);
+    }
+
+    public static String boxedSigToPrimitive(String boxed) {
+        if (boxed.equals(Byte.class.getName())) {
+            return "B";
+        } else if (boxed.equals(Boolean.class.getName())) {
+            return "Z";
+        } else if (boxed.equals(Short.class.getName())) {
+            return "S";
+        } else if (boxed.equals(Integer.class.getName())) {
+            return "I";
+        } else if (boxed.equals(Long.class.getName())) {
+            return "L";
+        } else if (boxed.equals(Float.class.getName())) {
+            return "F";
+        } else if (boxed.equals(Double.class.getName())) {
+            return "D";
+        } else {
+            return "L" + boxed + ";";
+        }
     }
 
     public static FieldInsnNode redirect(FieldInsnNode node, String owner) {

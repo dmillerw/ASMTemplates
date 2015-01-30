@@ -1,4 +1,4 @@
-package dmillerw.asm.template;
+package dmillerw.asm.core;
 
 public abstract class Template<T> {
 
