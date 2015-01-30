@@ -2,7 +2,7 @@ apply plugin: 'java'
 apply plugin: 'maven'
 
 sourceCompatibility = 1.5
-version = '1.0'
+version = '1.1'
 
 repositories {
     mavenCentral()
@@ -27,7 +27,7 @@ uploadArchives {
             repository(url: "file:///usr/share/nginx/html/maven")
             pom.groupId = 'dmillerw.asm'
             pom.artifactId = 'asm-templates'
-            pom.version = '1.0'
+            pom.version = version
         }
     }
 }
