@@ -147,6 +147,7 @@ public class SubclassGenerator<T> {
             MOverride mOverride = method.getAnnotation(MOverride.class);
             MImplement mImplement = method.getAnnotation(MImplement.class);
             MCastParam mCastParam = method.getAnnotation(MCastParam.class);
+            MCastParamList mCastParamList = method.getAnnotation(MCastParamList.class);
 
             if (mConstructor != null) {
                 MethodMapping methodMapping = new MethodMapping(method);
@@ -175,6 +176,15 @@ public class SubclassGenerator<T> {
                 if (mCastParam != null) {
                     String cast = ASMUtils.castSignature(original, mCastParam);
                     debug("Found MCastParam annotation. Changing " + original + " to " + cast);
+                    methodMapping.signature = cast;
+                }
+
+                if (mCastParamList != null) {
+                    String cast = original;
+                    for (MCastParam castParam : mCastParamList.castParams()) {
+                        cast = ASMUtils.castSignature(cast, castParam);
+                    }
+                    debug("Found MCastParamList annotation. Changing " + original + " to " + cast);
                     methodMapping.signature = cast;
                 }
 
