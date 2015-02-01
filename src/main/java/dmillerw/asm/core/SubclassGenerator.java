@@ -230,6 +230,15 @@ public class SubclassGenerator<T> {
                     methodMapping.signature = cast;
                 }
 
+                if (mCastParamList != null) {
+                    String cast = original;
+                    for (MCastParam castParam : mCastParamList.castParams()) {
+                        cast = ASMUtils.castSignature(cast, castParam);
+                    }
+                    debug("Found MCastParamList annotation. Changing " + original + " to " + cast);
+                    methodMapping.signature = cast;
+                }
+
                 implementMethods.add(methodMapping);
 
                 for (MethodNode methodNode : templateNode.methods) {
