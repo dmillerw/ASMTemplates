@@ -12,5 +12,6 @@ public class Main {
 
         ClassFoo foo2 = SubclassGenerator.generateSubclass(ClassFoo.class, TemplateFoo.class).newInstance();
         foo2.foo(classBar);
+        foo2.echo();
     }
 }

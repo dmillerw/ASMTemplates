@@ -16,4 +16,9 @@ public class TemplateFoo extends Template<ClassFoo> {
         ((Echo)bar).echo();
         return bar;
     }
+
+    @MOverride
+    public void echo() {
+        System.out.println("ECHOOO!");
+    }
 }
