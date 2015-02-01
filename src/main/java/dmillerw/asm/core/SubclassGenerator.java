@@ -12,9 +12,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -49,8 +47,6 @@ public class SubclassGenerator<T> {
     final Class<?> superClass;
     final Class<? extends Template<?>> templateClass;
 
-    // Super class node. Used for protecting the original methods when overridden
-    final ClassNode superNode;
     // Template class node. Used for copying methods
     final ClassNode templateNode;
 
@@ -59,6 +55,9 @@ public class SubclassGenerator<T> {
     String subName;
     String subType;
     final String templateType;
+
+    // All methods of the superclass and its superclasses
+    final List<MethodNode> superclassMethods = new ArrayList<MethodNode>();
 
     // Mappings of all valid constructors found in the super class
     final Set<MethodMapping> superConstructors = Sets.newHashSet();
@@ -83,7 +82,6 @@ public class SubclassGenerator<T> {
     public SubclassGenerator(Class<?> superClass, Class<? extends Template<T>> templateClass) {
         this.superClass = superClass;
         this.templateClass = templateClass;
-        this.superNode = ASMUtils.getClassNode(superClass);
         this.templateNode = ASMUtils.getClassNode(templateClass);
         this.superType = Type.getInternalName(superClass);
         this.subName = superClass.getName() + "_GENERATED_" + templateClass.hashCode();
@@ -91,6 +89,7 @@ public class SubclassGenerator<T> {
         this.templateType = Type.getInternalName(templateClass);
 
         gatherSuperclassConstructors();
+        gatherSuperclassMethods();
         gatherTemplateFields();
         gatherTemplateMethods();
     }
@@ -109,6 +108,19 @@ public class SubclassGenerator<T> {
             MethodMapping methodMapping = new MethodMapping(constructor);
             superConstructors.add(methodMapping);
             debug("Found super-class constructor: " + methodMapping.toString());
+        }
+    }
+
+    /**
+     * Gather all methods in the super class
+     */
+    private void gatherSuperclassMethods() {
+        Class<?> currentClass = superClass;
+        while (currentClass != null) {
+            ClassNode classNode = ASMUtils.getClassNode(currentClass);
+            superclassMethods.addAll(classNode.methods);
+
+            currentClass = currentClass.getSuperclass();
         }
     }
 
@@ -191,7 +203,7 @@ public class SubclassGenerator<T> {
                 boolean foundInSuperClass = false;
 
                 // We're overriding a method. Make sure the superclass actually has it
-                for (MethodNode methodNode : superNode.methods) {
+                for (MethodNode methodNode : superclassMethods) {
                     if (methodNode.name.equals(methodMapping.name) && methodNode.desc.equals(methodMapping.signature)) {
                         foundInSuperClass = true;
                         break;
@@ -212,7 +224,7 @@ public class SubclassGenerator<T> {
 
                     // Also grab the method node from the super class and store
                     MethodMapping defMethodMapping = new MethodMapping("default_" + methodMapping.name, methodMapping.signature);
-                    for (MethodNode methodNode : superNode.methods) {
+                    for (MethodNode methodNode : superclassMethods) {
                         if (methodNode.name.equals(methodMapping.name) && methodNode.desc.equals(methodMapping.signature)) {
                             methodNodes.put(defMethodMapping, methodNode);
                         }

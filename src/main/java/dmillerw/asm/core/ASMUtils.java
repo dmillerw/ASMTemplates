@@ -261,8 +261,8 @@ public class ASMUtils {
 
     public static ClassNode getClassNode(Class<?> clazz) {
         try {
-            String name = clazz.getName().replace(".", "/") + ".class";
-            byte[] data = IOUtils.toByteArray(clazz.getClassLoader().getResourceAsStream(name));
+            String name = "/" + clazz.getName().replace(".", "/") + ".class";
+            byte[] data = IOUtils.toByteArray(clazz.getResourceAsStream(name));
 
             ClassNode cnode = new ClassNode();
             ClassReader reader = new ClassReader(data);
